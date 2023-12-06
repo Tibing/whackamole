@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Tab Counter</title>
+</head>
+<body style="background-size: cover; background-size: cover; background-position: center; background-repeat: no-repeat;">
+<button id="run">run</button>
+<div style="visibility: hidden">Current Tab Number: <span id="tabNumber"></span></div>
+<div style="visibility: hidden">Total Tabs Opened: <span id="totalTabs"></span></div>
+<style>
+    html,body {
+        width: 100%;
+        height: 100%;
+    }
+</style>
+</body>
+<script>
+
+    var X = 1;
+    var Y = 3;
+    var multiplier = 300;
+
+    document.addEventListener('DOMContentLoaded', function () {
+        const tabNumberElement = document.getElementById('tabNumber');
+        const totalTabsElement = document.getElementById('totalTabs');
+        const bodyElement = document.querySelector('body');
+
+        // Unique identifier for each tab
+        const tabId = Date.now() + Math.random().toString();
+
+        // Update the localStorage with the new tab
+        let tabs = JSON.parse(localStorage.getItem('tabs') || '{}');
+        let controller = false;
+        if (Object.entries(tabs).length === 0) {
+            controller = true;
+        }
+        tabs[tabId] = true;
+        localStorage.setItem('tabs', JSON.stringify(tabs));
+
+        function updateTabCount() {
+            tabs = JSON.parse(localStorage.getItem('tabs') || '{}');
+            const tabNumbers = Object.keys(tabs).sort();
+            const currentTabIndex = tabNumbers.indexOf(tabId);
+            tabNumberElement.textContent = currentTabIndex + 1;
+            totalTabsElement.textContent = tabNumbers.length;
+        }
+
+        // Initial update
+        updateTabCount();
+
+        window.addEventListener('storage', function (event) {
+            console.log(event.key, localStorage.getItem('highlightedTab'));
+            if (event.key === 'tabs') {
+                updateTabCount();
+            } else if (event.key === 'highlightedTab') {
+                // in controller and highlightedTab cleared
+                if (controller && !localStorage.getItem('highlightedTab')) {
+                    console.log('controller reschedule');
+                    scheduleHighlight();
+                // current tab should be highlighted
+                } else if (localStorage.getItem('highlightedTab') === tabId) {
+                    console.log('change color');
+                    bodyElement.style.backgroundImage = 'url("mole.png")';
+                    setTimeout(() => {
+                        if (localStorage.getItem('highlightedTab') === tabId) {
+                            bodyElement.style.backgroundImage = '';
+                            localStorage.removeItem('highlightedTab');
+                        }
+                    }, Y * multiplier); // Y seconds
+                }
+            }
+        });
+
+        window.addEventListener('beforeunload', function () {
+            tabs = JSON.parse(localStorage.getItem('tabs') || '{}');
+            delete tabs[tabId];
+            localStorage.setItem('tabs', JSON.stringify(tabs));
+
+            if (localStorage.getItem('highlightedTab') === tabId) {
+                localStorage.removeItem('highlightedTab');
+            }
+        });
+
+        function scheduleHighlight() {
+            console.log('scheduleHighlight');
+            setTimeout(() => {
+                const items = Object.keys(JSON.parse(localStorage.getItem('tabs')));
+                const randomItem = items[Math.floor(Math.random()*items.length)];
+                if (randomItem === tabId) {
+                    bodyElement.style.backgroundImage = 'url("mole.png")';
+                    setTimeout(() => {
+                        bodyElement.style.backgroundImage = '';
+                        scheduleHighlight();
+                    }, Y * multiplier); // Y seconds
+                } else {
+                    localStorage.setItem('highlightedTab', randomItem);
+                }
+            }, X * multiplier);
+        }
+        const runBtn = document.querySelector('#run');
+        if (controller) {
+            runBtn.addEventListener('click', () => {
+                scheduleHighlight();
+                runBtn.parentElement.removeChild(runBtn);
+            });
+        } else {
+            runBtn.parentElement.removeChild(runBtn);
+        }
+
+        window.addEventListener('focus', clearHighlight);
+        bodyElement.addEventListener('click', clearHighlight);
+
+        function clearHighlight() {
+            if (bodyElement.style.backgroundImage === 'url("mole.png")') {
+                bodyElement.style.backgroundImage = 'url("mole-dead.png")';
+                setTimeout(() => {
+                    bodyElement.style.backgroundImage = '';
+                    localStorage.removeItem('highlightedTab');
+                }, X * multiplier);
+            }
+        }
+    });
+
+</script>
+</html>
